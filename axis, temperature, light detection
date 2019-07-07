@@ -1,0 +1,124 @@
+
+Source Code
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <stdbool.h>
+#include <gpio.hpp>
+#include <stdio.h>
+#include "utilities.h"
+#include "io.hpp"
+#include "lpc_sys.h"
+#include "soft_timer.hpp"
+
+
+typedef enum{IDLE, AXIS, LIGHT, LIGHT_SETTINGS, AXIS_SETTINGS} STATE;
+int main(void)
+
+{    setvbuf(stdout, 0, _IONBF, 0);
+     setvbuf(stdin, 0, _IONBF, 0);
+
+
+
+     STATE currentstate = IDLE;
+     printf("\nYou are in IDLE.");
+     while(1){
+    	 int axis_threshold=50;
+    	 int light_threshold=0;
+         bool sw1pressed = SW.getSwitch(1);
+         bool sw2pressed = SW.getSwitch(2);
+         bool sw3pressed = SW.getSwitch(3);
+         bool sw4pressed = SW.getSwitch(4);
+         int light = LS.getPercentValue();
+         GPIO myPin(P1_20);
+         myPin.setAsOutput();
+
+         int xaxis = ((AS.getX() + 1024) / 2048.0) * 100;
+         delay_ms(100);
+
+         switch(currentstate){
+
+             case IDLE:
+            	 myPin.setLow();
+                 if(sw1pressed){
+                     currentstate = AXIS;
+                     printf("\nTransitioning to AXIS");
+                 }
+                 else if(sw2pressed){
+                         currentstate = LIGHT;
+                         printf("\nTransitioning to LIGHT");
+                 }
+                 else if(sw3pressed){
+                         currentstate = AXIS_SETTINGS;
+                         printf("\nTransitioning to AXIS SETTINGS");
+                 }
+                 else if(sw4pressed){
+                         currentstate = LIGHT_SETTINGS;
+                         printf("\nTransitioning to LIGHT SETTINGS");
+                                  }
+                 break;
+
+             case AXIS:
+
+                 xaxis = ((AS.getX() + 1024) / 2048.0) * 100;
+                 printf("\nThe AXIS is tilted this far %i", xaxis);
+                 delay_ms(200);
+                 if (xaxis>50){
+                	 myPin.setHigh();//turn on fan
+                     }
+                 else if(sw2pressed){
+                     currentstate = IDLE;
+                     printf("\nTransitioning to IDLE");
+                 break;
+
+             case LIGHT:
+
+                 light = LS.getPercentValue();
+                 printf("%i", light);
+                 delay_ms(200);
+                 if(light>0){
+                	 myPin.setHigh();
+                     //turn on fan
+                               }
+                 else if(sw2pressed){
+                     currentstate = IDLE;
+                     printf("\nTransitioning to IDLE");
+                                     }
+                 break;
+
+             case LIGHT_SETTINGS:
+                 if(sw2pressed){
+                 light_threshold = light_threshold + 1;//threshold up
+                 }
+                 if(sw3pressed){
+                 light_threshold = light_threshold - 1;//threshold up
+                 }
+                 if(sw1pressed){
+                     currentstate = IDLE;
+                     printf("\nTransitioning to IDLE");
+                 }
+                 break;
+             case AXIS_SETTINGS:
+                 if(sw2pressed){
+                 axis_threshold = axis_threshold + 1;//threshold up
+                 }
+                 if(sw3pressed){
+                 axis_threshold = axis_threshold - 1;//threshold up
+                 }
+                 if(sw1pressed){
+                 currentstate = IDLE;
+                 printf("\nTransitioning to IDLE");
+                 }
+
+
+         } // end of switch
+     } // end of while
+
+
+
+
+}// end of main
+}
+
+
+
